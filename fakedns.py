@@ -390,23 +390,31 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='things and stuff')
     parser.add_argument(
-        '-c', dest='path', action='store', required=True,
+        '-c', dest='path', action='store', required=False,
         help='Path to configuration file')
     parser.add_argument(
         '-i', dest='iface', action='store', default='0.0.0.0', required=False,
         help='IP address you wish to run FakeDns with - default all')
     parser.add_argument(
         '--rebind', dest='rebind', action='store_true', required=False,
-        default=False, help="Enable DNS rebinding attacks - responds with one "
-        "result the first request, and another result on subsequent requests")
+        default=False, help='Enable DNS rebinding attacks - responds with one '
+        'result the first request, and another result on subsequent requests')
+    parser.add_argument(
+        '--static', dest='static', action='store_true', required=False,
+        default=False, help='Return the IP set in --ip as the reponse to all queries.')
+    parser.add_argument(
+        '--ip', dest='ip', action='store', required=False,
+        help='When --static is present, this value will be returned response to all queries.')
 
     args = parser.parse_args()
 
     # Default config file path.
     path = args.path
-    if not os.path.isfile(path):
-        print '>> Please create a "dns.conf" file or specify a config path: ' \
-              './fakedns.py [configfile]'
+    if not args.static and (args.path is None or not os.path.isfile(path)):
+        print '[!] -c and an existing filepath are required unless --static and --ip are present.'
+        exit()
+    if args.static and args.ip is None:
+        print '[!] --static requires a value for --ip.'
         exit()
 
     rules = RuleEngine(path)
@@ -418,7 +426,7 @@ if __name__ == '__main__':
     try:
         server = ThreadedUDPServer((interface, int(port)), UDPHandler)
     except socket.error:
-        print ">> Could not start server -- is another program on udp:53?"
+        print "[!] Could not start server -- is another program on udp:53? are you running with elevated privilege?"
         exit(1)
 
     server.daemon = True
